@@ -1,0 +1,201 @@
+---
+title: "Mpas"
+author: "Ximena Cortés"
+date: "2024-05-21"
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(sf)
+library(ggspatial)
+library(raster)
+library(rnaturalearth)
+```
+
+
+```{r}
+library(ggplot2)
+AreasP_PNN <- sf::st_read("C:/Users/jvive/Desktop/B.C/Mapas2/Mapas_vectores_raster/Colombia.ParquesNaturalesNacionales.SPNN.EPSG4686.shp")
+
+ # Agregar la capa de Parques Naturales Nacionales en Colombia
+ggplot(data = AreasP_PNN)+
+    geom_sf(data = AreasP_PNN, fill = "darkgreen")+
+  theme_bw()
+```
+
+```{r}
+library(sf)
+#Agregar la capa de los ríos.
+rios <- sf::st_read("C:/Users/jvive/Desktop/B.C/Mapas2/Mapas_vectores_raster/Colombia.DrenajeDoble.IGAC_Cartobase100k.EPSG4686.shp")
+
+invalid_ids <- which(!st_is_valid(rios))
+print(invalid_ids)
+
+invalid_geometries <- rios[invalid_ids, ]
+print(invalid_geometries)
+
+rios <- rios[st_is_valid(rios), ]
+rios <- rios[!st_is_empty(rios), ]
+
+rios <- st_cast(rios, "MULTIPOLYGON")
+
+###
+ggplot(data = rios)+
+  geom_sf(data = rios, fill = "lightblue", color="lightblue")+
+  theme_bw()
+```
+
+Departamentos de Colombia 
+```{r}
+library(ggspatial)
+colombia <- sf::st_read("C:/Users/jvive/Desktop/B.C/Mapas2/Mapas_vectores_raster/Colombia.LimitesDepartamentales.DNP_2015.EPSG4686.shp")
+
+ggplot(data = colombia)+geom_sf(data = colombia, fill = "lightgrey")+coord_sf(xlim=c(-80,-64),ylim=c(-5,13), expand = FALSE)+annotation_scale(location = "br", width_hint = 0.5) +annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +theme_bw()
+  
+  geom_sf(data = colombia, fill = "lightgrey")+
+  
+# Configurar límites del gráfico para enfocarse en toda Colombia. 
+  coord_sf(xlim=c(-80,-64),ylim=c(-5,13), expand = FALSE)+
+
+  # Agregar escala de referencia
+  annotation_scale(location = "br", width_hint = 0.2) +
+
+# Agregar flecha indicadora de norte
+  annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  
+  theme_bw()
+```
+
+Coordillera de los Andes
+```{r}
+DEM = raster("C:/Users/jvive/Desktop/B.C/Mapas2/Mapas_vectores_raster/Andes_DEM_Cliped.tif")
+plot(DEM)
+
+DEM2 <-
+  as.data.frame(DEM, xy = TRUE) %>%
+  na.omit() 
+head(DEM2)
+
+```
+
+Mapa junto con la cordillera de los Andes:
+```{r}
+#install.packages("rnaturalearthdata")
+#library("rnaturalearthdata")
+
+World <- ne_countries(scale = "medium", returnclass = "sf")
+
+ggplot(data = World) +
+  
+  # Agregar la capa del mapa mundial
+  geom_sf(fill="gray98") +
+  
+  # Configurar límites del gráfico para enfocarse en toda Colombia. 
+  coord_sf(xlim=c(-80,-62),ylim=c(-5,13), expand = FALSE)+
+  
+  # Configure plot limits for Colombia
+  coord_sf(xlim = c(-80, -70), ylim = c(-5, 13), expand = FALSE) +
+  
+  # Add scale bar
+  annotation_scale(location = "br", width_hint = 0.3) +
+  
+  # Add north arrow
+  annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  # Add DEM raster layer
+  geom_raster(data = as.data.frame(DEM2), aes(x = x, y = y, fill = Andes_DEM_Cliped)) + 
+  theme_bw() +
+  scale_fill_gradient(low = "gray95", high = "gray30")+
+   labs(x = "", y = "", fill = "Elevation masl") #change labs for x y and legend
+```
+
+Agregar Parques Nacionales a este mapa:
+```{r}
+ggplot(data = World) +
+  
+  # Agregar la capa del mapa mundial
+  geom_sf(fill="gray98") +
+  # Add DEM raster layer
+  geom_raster(data = as.data.frame(DEM2), aes(x = x, y = y, fill = Andes_DEM_Cliped)) + 
+  
+   geom_sf(data = AreasP_PNN, fill = "#3CB371", alpha = 0.9, color = "#3CB371")+
+  
+  # Configure plot limits for Colombia
+  coord_sf(xlim = c(-80, -65), ylim = c(-5, 13), expand = FALSE) +
+  
+  # Add scale bar
+  annotation_scale(location = "br", width_hint = 0.3) +
+  
+  # Add north arrow
+  annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  theme_bw() +
+  scale_fill_gradient(low = "gray95", high = "gray30")+
+   labs(x = "", y = "", fill = "Elevation (masl)") #change labs for x y and legend
+```
+```{r}
+ggplot(data = World) +
+  
+  # Agregar la capa del mapa mundial
+  geom_sf(fill="gray98") +
+  # Add DEM raster layer
+  geom_sf(data = colombia, fill = "transparent")+
+
+  geom_raster(data = as.data.frame(DEM2), aes(x = x, y = y, fill = Andes_DEM_Cliped)) + 
+  
+  geom_sf(data = AreasP_PNN, fill = "#3CB371", alpha = 0.9, color = "#3CB371")+  
+  
+  geom_sf(data = rios, fill = "lightblue", color="blue")+
+
+  
+  # Configure plot limits for Colombia
+  coord_sf(xlim = c(-80, -65), ylim = c(-5, 13), expand = FALSE) +
+  
+  # Add scale bar
+  annotation_scale(location = "br", width_hint = 0.3) +
+  
+  # Add north arrow
+  annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  theme_bw() +
+  scale_fill_gradient(low = "gray95", high = "gray30")+
+   labs(x = "", y = "", fill = "Elevation (masl)") #change labs for x y and legend
+```
+
+
+
+```{r}
+# Crear un gráfico utilizando ggplot2
+ggplot(data = World) +
+  
+  # Agregar la capa del mapa mundial
+  geom_sf(fill="gray98") +
+    # Add DEM raster layer
+  geom_raster(data = as.data.frame(DEM2), aes(x = x, y = y, fill = Andes_DEM_Cliped)) + 
+  
+  geom_sf(data = AreasP_PNN, fill = "#3CB371", alpha = 0.9, color = "#3CB371")+
+  
+  geom_sf(data = colombia, fill = "transparent")+
+  
+  # Configure plot limits for Colombia
+  coord_sf(xlim = c(-76, -74), ylim = c(5, 6), expand = FALSE) +
+  
+  # Add scale bar
+  annotation_scale(location = "bl", width_hint = 0.2) +
+  
+  # Add north arrow
+  annotation_north_arrow(location = "tl", which_north = "true", 
+                         pad_x = unit(0.10, "in"), pad_y = unit(0.1, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  theme_bw() +
+  scale_fill_gradient(low = "gray95", high = "gray30")+
+   labs(x = "", y = "", fill = "Elevation (masl)") #change labs for x y and legend
+```
+
